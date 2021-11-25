@@ -10,45 +10,60 @@ import Text.Read
 import Data.List
 import Data.List.Split
 
-data Command = Input | Change
+data Command
+  = Input
+    { address :: String
+    , testnet :: Maybe Int
+    }
+  | Change
+    { address :: String
+    , testnet :: Maybe Int
+    , outputAssets :: [String]
+    }
+  | ParseAsUtxo
   deriving (Eq, Show)
 
-data Options = Options
-  { address      :: String
-  , testnet      :: Maybe Int
-  , outputAssets :: [String]
-  , commandType  :: Command
-  }
-  deriving (Eq, Show)
-
-pCommand :: Parser Options
-pCommand
-   =  Options
+pAddressAndTestnet :: Parser (String, Maybe Int)
+pAddressAndTestnet
+  =   (,)
   <$> strOption
-      ( long "address"
-      <> short 'a'
-      <> metavar "ADDRESS"
-      )
+        ( long "address"
+        <> short 'a'
+        <> metavar "ADDRESS"
+        )
   <*> optional
         ( option auto
           ( long "testnet"
           <> metavar "TESTNET_MAGIC_NUMBER"
           )
         )
-  <*> many
-        ( strOption
-          (  long "output"
-          <> short 'o'
-          <> metavar "OUTPUT_VALUE"
-          )
-        )
-  <*> subparser
+
+pOutputs :: Parser [String]
+pOutputs = many
+  ( strOption
+    (  long "output"
+    <> short 'o'
+    <> metavar "OUTPUT_VALUE"
+    )
+  )
+
+pCommand :: Parser Command
+pCommand
+   = subparser
       (   ( command "input"
-              (Input <$ info (pure ()) (progDesc "Prints out the UTxOs as input args for the cardano-cli"))
+              (uncurry Input <$> info pAddressAndTestnet (progDesc "Prints out the UTxOs as input args for the cardano-cli"))
           )
       <> ( command "change"
-              (Change <$ info (pure ()) (progDesc "create a value suitable "))
-          )
+              (info
+                ((\(address, testnet) outputAssets -> Change {..}) <$> pAddressAndTestnet <*> pOutputs)
+                (progDesc "create a value suitable "))
+         )
+      <> ( command "parse-as-utxo"
+              (ParseAsUtxo <$ info
+                (pure ())
+                (progDesc "Parse a line from `cardano-cli query utxo` and print as tx#output-id")
+              )
+         )
       )
 
 parseNonNativeTokens :: [String] -> Maybe Value
@@ -151,12 +166,9 @@ pprUTxOInput UTxO {..}
 
 main :: IO ()
 main = do
-  Options {..} <- execParser $ info (pCommand <**> helper) mempty
-
-  utxos <- runCardanoCli address testnet
-
-  case commandType of
-    Change -> do
+  execParser (info (pCommand <**> helper) mempty) >>= \case
+    Change {..} -> do
+      utxos <- runCardanoCli address testnet
       outputValues <- forM outputAssets $ \outputStr ->
         maybe (throwIO $ userError $ "Failed to parse output value: " <> outputStr) pure
           $ parseValue outputStr
@@ -164,7 +176,17 @@ main = do
       putStrLn $ pprValue
         $ (mergeValues $ map utxoAssets utxos) `diffValues` mergeValues outputValues
 
-
-    Input -> do
+    Input {..} -> do
+      utxos <- runCardanoCli address testnet
       let inputsStr = unwords $ map pprUTxOInput utxos
       putStrLn inputsStr
+
+    ParseAsUtxo -> do
+      utxoLine <- getLine
+
+      UTxO {..} <- maybe (throwIO . userError $ "Failed to parse UTxO for line: " <> utxoLine) pure
+        $ parseUTxOLine utxoLine
+
+      putStr $ utxoTx
+            <> "#"
+            <> utxoIndex

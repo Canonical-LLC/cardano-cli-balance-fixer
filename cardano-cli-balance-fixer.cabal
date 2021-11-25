@@ -29,6 +29,7 @@ executable cardano-cli-balance-fixer
 
     -- LANGUAGE extensions used by modules in this package.
     default-extensions: RecordWildCards
+                      , LambdaCase
 
     build-depends: base ^>=4.14.3.0
                  , optparse-applicative
