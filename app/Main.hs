@@ -33,7 +33,7 @@ pAddressAndTestnet
         )
   <*> optional
         ( option auto
-          ( long "testnet"
+          ( long "testnet-magic"
           <> metavar "TESTNET_MAGIC_NUMBER"
           )
         )
@@ -69,6 +69,7 @@ pCommand
 parseNonNativeTokens :: [String] -> Maybe Value
 parseNonNativeTokens = go mempty where
   go acc xs = case xs of
+    [] -> Just acc
     "+":"TxOutDatumNone":[] -> Just acc
     "+":"TxOutDatumHash":_ -> Just acc
     "+":countStr:asset:rest -> do
@@ -174,7 +175,7 @@ main = do
           $ parseValue outputStr
 
       putStrLn $ pprValue
-        $ (mergeValues $ map utxoAssets utxos) `diffValues` mergeValues outputValues
+        $ M.delete "" (mergeValues $ map utxoAssets utxos) `diffValues` mergeValues outputValues
 
     Input {..} -> do
       utxos <- runCardanoCli address testnet
