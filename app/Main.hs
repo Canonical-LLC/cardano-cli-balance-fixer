@@ -26,6 +26,10 @@ data Command
     { address :: String
     , testnet :: Maybe Int
     }
+  | UtxoAssets
+    { utxo :: String
+    , testnet :: Maybe Int
+    }
   deriving (Eq, Show)
 
 pAddressAndTestnet :: Parser (String, Maybe Int)
@@ -52,6 +56,21 @@ pOutputs = many
     )
   )
 
+pUtxo :: Parser (String, Maybe Int)
+pUtxo
+  = (,)
+  <$> strOption
+      ( long "utxo"
+      <> short 'u'
+      <> metavar "TRANSACTION_ID#OUTPUT_ID"
+      )
+  <*> optional
+        ( option auto
+          ( long "testnet-magic"
+          <> metavar "TESTNET_MAGIC_NUMBER"
+          )
+        )
+
 pCommand :: Parser Command
 pCommand
    = subparser
@@ -73,6 +92,12 @@ pCommand
             (uncurry CollateralUtxo <$> info
               pAddressAndTestnet
               (progDesc "Find a large UTxO for collateral")
+            )
+          )
+      <> ( command "utxo-assets"
+            (uncurry UtxoAssets <$> info
+              pUtxo
+              (progDesc "Print out the assets on a UTxO")
             )
           )
       )
@@ -129,6 +154,21 @@ runCardanoCli address mTestnet
         , "utxo"
         , "--address"
         , address
+        ] <>
+        maybe ["--mainnet"] (\x -> ["--testnet-magic", show x]) mTestnet
+      )
+      ""
+
+
+runCardanoCliUtxo :: String -> Maybe Int -> IO [UTxO]
+runCardanoCliUtxo utxo mTestnet
+  = mapM (\line -> maybe (throwIO . userError $ "Failed to parse UTxO for line: " <> line) pure $ parseUTxOLine line) . drop 2 . lines
+  =<< readProcess
+      "cardano-cli"
+      ( [ "query"
+        , "utxo"
+        , "--tx-in"
+        , utxo
         ] <>
         maybe ["--mainnet"] (\x -> ["--testnet-magic", show x]) mTestnet
       )
@@ -211,3 +251,8 @@ main = do
       putStr $ utxoTx
             <> "#"
             <> utxoIndex
+
+    UtxoAssets {..} -> do
+      runCardanoCliUtxo utxo testnet >>= \case
+        [UTxO {..}] -> putStr $ pprValue utxoAssets
+        _ -> throwIO $ userError "found more than one utxo!"
