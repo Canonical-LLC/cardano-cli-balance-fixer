@@ -9,6 +9,7 @@ import Data.Traversable
 import Text.Read
 import Data.List
 import Data.List.Split
+import Data.Function
 
 data Command
   = Input
@@ -21,6 +22,10 @@ data Command
     , outputAssets :: [String]
     }
   | ParseAsUtxo
+  | CollateralUtxo
+    { address :: String
+    , testnet :: Maybe Int
+    }
   deriving (Eq, Show)
 
 pAddressAndTestnet :: Parser (String, Maybe Int)
@@ -64,7 +69,14 @@ pCommand
                 (progDesc "Parse a line from `cardano-cli query utxo` and print as tx#output-id")
               )
          )
+      <> ( command "collateral"
+            (uncurry CollateralUtxo <$> info
+              pAddressAndTestnet
+              (progDesc "Find a large UTxO for collateral")
+            )
+          )
       )
+
 
 parseNonNativeTokens :: [String] -> Maybe Value
 parseNonNativeTokens = go mempty where
@@ -143,7 +155,6 @@ diffTokenMap x y =
           then Nothing
           else Just new
 
-
 diffValues :: Value -> Value -> Value
 diffValues = M.differenceWith (diffTokenMap)
 
@@ -188,6 +199,15 @@ main = do
       UTxO {..} <- maybe (throwIO . userError $ "Failed to parse UTxO for line: " <> utxoLine) pure
         $ parseUTxOLine utxoLine
 
+      putStr $ utxoTx
+            <> "#"
+            <> utxoIndex
+
+    CollateralUtxo {..} -> do
+      utxos <- runCardanoCli address testnet
+      let lovelaces :: UTxO -> Int
+          lovelaces = fromMaybe 0 . M.lookup "" . fromMaybe mempty . M.lookup "" . utxoAssets
+      let UTxO {..} = maximumBy (compare `on` lovelaces) utxos
       putStr $ utxoTx
             <> "#"
             <> utxoIndex
