@@ -14,10 +14,11 @@ version:            0.1.0.0
 -- The license under which the package is released.
 -- license:
 author:             Jonathan Fischoff
-maintainer:         jonathangfischoff@gmail.com
+maintainer:         jonathan@canonicalllc.com
+license: MIT
 
 -- A copyright notice.
--- copyright:
+copyright: Copyright 2021 Canonicall LLC
 -- category:
 extra-source-files: CHANGELOG.md
 
