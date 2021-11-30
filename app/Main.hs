@@ -10,6 +10,9 @@ import Text.Read
 import Data.List
 import Data.List.Split
 import Data.Function
+import qualified Data.ByteString.Lazy.Char8 as BSLC
+import qualified Data.ByteString.Lazy as BSL
+import qualified Data.Aeson as Aeson
 
 data Command
   = Input
@@ -29,6 +32,14 @@ data Command
   | UtxoAssets
     { utxo :: String
     , testnet :: Maybe Int
+    }
+  | Balance
+    { address :: String
+    , testnet :: Maybe Int
+    }
+  | DiffValues
+    { inputFile0 :: FilePath
+    , inputFile1 :: FilePath
     }
   deriving (Eq, Show)
 
@@ -71,6 +82,21 @@ pUtxo
           )
         )
 
+twoValuePaths :: Parser (FilePath, FilePath)
+twoValuePaths
+  = (,)
+  <$> strOption
+      ( long "value-1"
+      <> short 'v'
+      <> metavar "VALUE_FILEPATH_1"
+      )
+  <*> strOption
+      ( long "value-1"
+      <> short 'u'
+      <> metavar "VALUE_FILEPATH_2"
+      )
+
+
 pCommand :: Parser Command
 pCommand
    = subparser
@@ -98,6 +124,18 @@ pCommand
             (uncurry UtxoAssets <$> info
               pUtxo
               (progDesc "Print out the assets on a UTxO")
+            )
+          )
+      <> ( command "balance"
+            (uncurry Balance <$> info
+              pAddressAndTestnet
+              (progDesc "Find a large UTxO for collateral")
+            )
+          )
+      <> ( command "diff-values"
+            (uncurry DiffValues <$> info
+              twoValuePaths
+              (progDesc "Find a large UTxO for collateral")
             )
           )
       )
@@ -216,6 +254,7 @@ pprUTxOInput UTxO {..}
   <> "#"
   <> utxoIndex
 
+
 main :: IO ()
 main = do
   execParser (info (pCommand <**> helper) mempty) >>= \case
@@ -256,3 +295,20 @@ main = do
       runCardanoCliUtxo utxo testnet >>= \case
         [UTxO {..}] -> putStr $ pprValue utxoAssets
         _ -> throwIO $ userError "found more than one utxo!"
+
+    Balance {..} -> do
+      utxos <- runCardanoCli address testnet
+      let mergedValue = mergeValues $ map utxoAssets utxos
+
+      BSLC.putStrLn $ Aeson.encode mergedValue
+
+    DiffValues {..} -> do
+      value0 <- either (throwIO . userError) pure
+              . Aeson.eitherDecode
+              =<< BSL.readFile inputFile0
+
+      value1 <- either (throwIO . userError) pure
+              . Aeson.eitherDecode
+              =<< BSL.readFile inputFile1
+
+      BSLC.putStrLn $ Aeson.encode $ diffValues value0 value1
