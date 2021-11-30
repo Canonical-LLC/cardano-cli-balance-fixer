@@ -91,7 +91,7 @@ twoValuePaths
       <> metavar "VALUE_FILEPATH_1"
       )
   <*> strOption
-      ( long "value-1"
+      ( long "value-2"
       <> short 'u'
       <> metavar "VALUE_FILEPATH_2"
       )
