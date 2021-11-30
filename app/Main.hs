@@ -81,12 +81,18 @@ pUtxo
       <> short 'u'
       <> metavar "TRANSACTION_ID#OUTPUT_ID"
       )
-  <*> optional
-        ( option auto
+  <*> (
+        ( Just <$> option auto
           ( long "testnet-magic"
           <> metavar "TESTNET_MAGIC_NUMBER"
           )
         )
+      <|>
+        ( Nothing <$ switch
+          ( long "mainnet"
+          )
+        )
+      )
 
 twoValuePaths :: Parser (FilePath, FilePath)
 twoValuePaths
