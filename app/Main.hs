@@ -239,7 +239,11 @@ diffValues = M.differenceWith (diffTokenMap)
 diffTokenMapWithNegatives :: Map String Int -> Map String Int -> Maybe (Map String Int)
 diffTokenMapWithNegatives x y =
   let
-    diffCoin a b = Just $ a - b
+    diffCoin a b =
+      let a' = a - b
+      in if a' == 0
+        then Nothing
+        else Just a'
 
     new = M.differenceWith diffCoin x y
 
@@ -325,4 +329,4 @@ main = do
               . Aeson.eitherDecode
               =<< BSL.readFile inputFile1
 
-      BSLC.putStrLn $ Aeson.encode $ diffValuesWithNegatives value0 value1
+      BSLC.putStrLn $ Aeson.encode $ diffValuesWithNegatives value1 value0
