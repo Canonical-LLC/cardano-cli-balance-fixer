@@ -236,6 +236,20 @@ diffTokenMap x y =
 diffValues :: Value -> Value -> Value
 diffValues = M.differenceWith (diffTokenMap)
 
+diffTokenMapWithNegatives :: Map String Int -> Map String Int -> Maybe (Map String Int)
+diffTokenMapWithNegatives x y =
+  let
+    diffCoin a b = Just $ a - b
+
+    new = M.differenceWith diffCoin x y
+
+    in if new == mempty
+          then Nothing
+          else Just new
+
+diffValuesWithNegatives :: Value -> Value -> Value
+diffValuesWithNegatives = M.differenceWith (diffTokenMapWithNegatives)
+
 pprPolicyTokens :: String -> Map String Int -> [String]
 pprPolicyTokens policyId tokenMap = if policyId == ""
   then map (\count -> show count <> " lovelace") $ M.elems tokenMap
@@ -311,4 +325,4 @@ main = do
               . Aeson.eitherDecode
               =<< BSL.readFile inputFile1
 
-      BSLC.putStrLn $ Aeson.encode $ diffValues value0 value1
+      BSLC.putStrLn $ Aeson.encode $ diffValuesWithNegatives value0 value1
