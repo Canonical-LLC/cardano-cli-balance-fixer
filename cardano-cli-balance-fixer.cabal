@@ -32,7 +32,7 @@ executable cardano-cli-balance-fixer
     default-extensions: RecordWildCards
                       , LambdaCase
 
-    build-depends: base ^>=4.14.3.0
+    build-depends: base ^>=4.14.2.0
                  , optparse-applicative
                  , process
                  , containers
