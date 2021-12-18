@@ -17,25 +17,25 @@ import qualified Data.Aeson as Aeson
 data Command
   = Input
     { address :: String
-    , testnet :: Maybe Int
+    , testnet :: Maybe Integer
     }
   | Change
     { address :: String
-    , testnet :: Maybe Int
+    , testnet :: Maybe Integer
     , outputAssets :: [String]
     }
   | ParseAsUtxo
   | CollateralUtxo
     { address :: String
-    , testnet :: Maybe Int
+    , testnet :: Maybe Integer
     }
   | UtxoAssets
     { utxo :: String
-    , testnet :: Maybe Int
+    , testnet :: Maybe Integer
     }
   | Balance
     { address :: String
-    , testnet :: Maybe Int
+    , testnet :: Maybe Integer
     }
   | DiffValues
     { inputFile0 :: FilePath
@@ -43,7 +43,7 @@ data Command
     }
   deriving (Eq, Show)
 
-pAddressAndTestnet :: Parser (String, Maybe Int)
+pAddressAndTestnet :: Parser (String, Maybe Integer)
 pAddressAndTestnet
   =   (,)
   <$> strOption
@@ -73,7 +73,7 @@ pOutputs = many
     )
   )
 
-pUtxo :: Parser (String, Maybe Int)
+pUtxo :: Parser (String, Maybe Integer)
 pUtxo
   = (,)
   <$> strOption
@@ -113,7 +113,7 @@ pCommand :: Parser Command
 pCommand
    = subparser
       (   ( command "input"
-              (uncurry Input <$> info pAddressAndTestnet (progDesc "Prints out the UTxOs as input args for the cardano-cli"))
+              (uncurry Input <$> info pAddressAndTestnet (progDesc "PrIntegers out the UTxOs as input args for the cardano-cli"))
           )
       <> ( command "change"
               (info
@@ -123,7 +123,7 @@ pCommand
       <> ( command "parse-as-utxo"
               (ParseAsUtxo <$ info
                 (pure ())
-                (progDesc "Parse a line from `cardano-cli query utxo` and print as tx#output-id")
+                (progDesc "Parse a line from `cardano-cli query utxo` and prInteger as tx#output-id")
               )
          )
       <> ( command "collateral"
@@ -135,7 +135,7 @@ pCommand
       <> ( command "utxo-assets"
             (uncurry UtxoAssets <$> info
               pUtxo
-              (progDesc "Print out the assets on a UTxO")
+              (progDesc "PrInteger out the assets on a UTxO")
             )
           )
       <> ( command "balance"
@@ -178,9 +178,9 @@ parseValue' xs = case xs of
     lovelaces <- readMaybe lovelacesStr
     initialValue <- parseNonNativeTokens nonNativeTokens
     pure $ M.insert "" (M.singleton "" lovelaces) initialValue
-  _ -> Nothing
+  nonNativeTokens -> parseNonNativeTokens nonNativeTokens
 
-type Value = Map String (Map String Int)
+type Value = Map String (Map String Integer)
 
 data UTxO = UTxO
   { utxoTx     :: String
@@ -195,7 +195,7 @@ parseUTxOLine line = case words line of
     pure UTxO {..}
   _ -> Nothing
 
-runCardanoCli :: String -> Maybe Int -> IO [UTxO]
+runCardanoCli :: String -> Maybe Integer -> IO [UTxO]
 runCardanoCli address mTestnet
   = mapM (\line -> maybe (throwIO . userError $ "Failed to parse UTxO for line: " <> line) pure $ parseUTxOLine line) . drop 2 . lines
   =<< readProcess
@@ -210,7 +210,7 @@ runCardanoCli address mTestnet
       ""
 
 
-runCardanoCliUtxo :: String -> Maybe Int -> IO [UTxO]
+runCardanoCliUtxo :: String -> Maybe Integer -> IO [UTxO]
 runCardanoCliUtxo utxo mTestnet
   = mapM (\line -> maybe (throwIO . userError $ "Failed to parse UTxO for line: " <> line) pure $ parseUTxOLine line) . drop 2 . lines
   =<< readProcess
@@ -230,7 +230,7 @@ mergeValues = foldr mergeValue mempty
 mergeValue :: Value -> Value -> Value
 mergeValue x y = M.unionWith (M.unionWith (+)) x y
 
-diffTokenMap :: Map String Int -> Map String Int -> Maybe (Map String Int)
+diffTokenMap :: Map String Integer -> Map String Integer -> Maybe (Map String Integer)
 diffTokenMap x y =
   let
     diffCoin a b =
@@ -248,7 +248,7 @@ diffTokenMap x y =
 diffValues :: Value -> Value -> Value
 diffValues = M.differenceWith (diffTokenMap)
 
-diffTokenMapWithNegatives :: Map String Int -> Map String Int -> Maybe (Map String Int)
+diffTokenMapWithNegatives :: Map String Integer -> Map String Integer -> Maybe (Map String Integer)
 diffTokenMapWithNegatives x y =
   let
     diffCoin a b =
@@ -266,7 +266,7 @@ diffTokenMapWithNegatives x y =
 diffValuesWithNegatives :: Value -> Value -> Value
 diffValuesWithNegatives = M.differenceWith (diffTokenMapWithNegatives)
 
-pprPolicyTokens :: String -> Map String Int -> [String]
+pprPolicyTokens :: String -> Map String Integer -> [String]
 pprPolicyTokens policyId tokenMap = if policyId == ""
   then map (\count -> show count <> " lovelace") $ M.elems tokenMap
   else map (\(tokenName, count) -> show count <> " " <> policyId <> "." <> tokenName )
@@ -314,7 +314,7 @@ main = do
 
     CollateralUtxo {..} -> do
       utxos <- runCardanoCli address testnet
-      let lovelaces :: UTxO -> Int
+      let lovelaces :: UTxO -> Integer
           lovelaces = fromMaybe 0 . M.lookup "" . fromMaybe mempty . M.lookup "" . utxoAssets
       let UTxO {..} = maximumBy (compare `on` lovelaces) utxos
       putStr $ utxoTx
