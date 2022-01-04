@@ -169,6 +169,8 @@ parseNonNativeTokens = go mempty where
 
       go newAcc rest
 
+    _ -> Nothing
+
 parseValue :: String -> Maybe Value
 parseValue = parseValue' . words
 
