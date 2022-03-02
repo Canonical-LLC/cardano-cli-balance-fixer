@@ -169,6 +169,15 @@ parseNonNativeTokens = go mempty where
 
       go newAcc rest
 
+    countStr:asset:rest -> do
+      count <- readMaybe countStr
+      (policyId, tokenName) <- case splitOn "." asset of
+        [policyId, tokenName] -> Just (policyId, tokenName)
+        _ -> Nothing
+
+      let newAcc = M.insertWith (<>) policyId (M.singleton tokenName count) acc
+
+      go newAcc rest
     _ -> Nothing
 
 parseValue :: String -> Maybe Value
