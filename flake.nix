@@ -19,12 +19,12 @@
       overlays = [
         haskellNix.overlay
         (final: prev: rec {
-          cardano-cli-balance-fixer-project = haskell-nix.project {
+          cardano-cli-balance-fixer-project = final.haskell-nix.project {
             compiler-nix-name = "ghc8107";
 
-            src = haskell-nix.haskellLib.cleanGit {
+            src = final.haskell-nix.haskellLib.cleanGit {
               name = "cardano-cli-balance-fixer-src";
-              src = ../..;
+              src = ./.;
             };
             index-state = "2022-03-15T00:00:00Z";
           };
