@@ -9,3 +9,9 @@ You can use it in scripts like so:
 ```
 
 It also includes several other commands that are helpful when writing integration tests using the `cardano-cli`.
+
+## Installation
+
+```bash
+cabal install
+```
