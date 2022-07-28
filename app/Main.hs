@@ -159,6 +159,7 @@ parseNonNativeTokens = go mempty where
     [] -> Just acc
     "+":"TxOutDatumNone":[] -> Just acc
     "+":"TxOutDatumHash":_ -> Just acc
+    "+":"TxOutDatumInline":_ -> Just acc
     "+":countStr:asset:rest -> do
       count <- readMaybe countStr
       (policyId, tokenName) <- case splitOn "." asset of
